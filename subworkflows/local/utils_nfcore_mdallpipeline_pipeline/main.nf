@@ -11,7 +11,7 @@
 include { UTILS_NFSCHEMA_PLUGIN     } from '../../nf-core/utils_nfschema_plugin'
 include { paramsSummaryMap          } from 'plugin/nf-schema'
 include { samplesheetToList         } from 'plugin/nf-schema'
-include { completionEmail           } from '../../nf-core/utils_nfcore_pipeline'
+//include { completionEmail           } from '../../nf-core/utils_nfcore_pipeline'
 include { completionSummary         } from '../../nf-core/utils_nfcore_pipeline'
 include { imNotification            } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NFCORE_PIPELINE     } from '../../nf-core/utils_nfcore_pipeline'
@@ -74,21 +74,73 @@ workflow PIPELINE_INITIALISATION {
 
     Channel
         .fromList(samplesheetToList(params.input, "${projectDir}/assets/schema_input.json"))
-        .map {
-            meta, fastq_1, fastq_2 ->
-                if (!fastq_2) {
-                    return [ meta.id, meta + [ single_end:true ], [ fastq_1 ] ]
-                } else {
-                    return [ meta.id, meta + [ single_end:false ], [ fastq_1, fastq_2 ] ]
-                }
+        .map {meta, lib_type, fastq_path, genome_ref, transcriptome_ref ->
+            // Validate sequencing library type
+            def libtype = lib_type.toString()
+            if ( !(libtype == "cDNA" || libtype == "dRNA")) {
+                error("Library type should be either 'cDNA' or 'dRNA' ; please modify samplesheet accordingly")
+            }
+                
+            // Validate genome reference file
+            def gePath = genome_ref.toString()
+            def geFile = new File(gePath)
+            if (!geFile.exists()) {
+                error("Genome reference file for sample '${meta.id}' does not exist: ${gePath}")
+            }
+            def r = gePath.toLowerCase()
+            if (!(r.endsWith('.fa') || r.endsWith('.fasta') || r.endsWith('.fa.gz') || r.endsWith('.fasta.gz'))) {
+                error("Genome reference file for sample '${meta.id}' must be a .fa or .fasta file (optionally gzipped): ${gePath}")
+            }
+            
+            // Check for the presence of the .fai index file
+            def faiPath = gePath + ".fai"
+            def faiFile = new File(faiPath)
+            if (!faiFile.exists()) {
+                error("Index file (.fai) for reference genome '${gePath}' does not exist. Please index the genomic reference using 'samtools faidx ${gePath}'")
+            }
+
+            // Validate transcriptome reference file
+            def trPath = transcriptome_ref.toString()
+            def trFile = new File(trPath)
+            if (!trFile.exists()) {
+                error("Transcriptome reference file for sample '${meta.id}' does not exist: ${trPath}")
+            }
+            def tr = trPath.toLowerCase()
+            if (!(tr.endsWith('.gtf') || tr.endsWith('.gff') || tr.endsWith('.gtf.gz') || tr.endsWith('.gff.gz'))) {
+                error("Transcriptome reference file for sample '${meta.id}' must be a .gtf or .gff file (optionally gzipped): ${trPath}")
+            }
+
+            // Validate fastq directory
+            def fqDirPath = fastq_path.toString()
+            def fqDir = new File(fqDirPath)
+            if (!fqDir.exists() || !fqDir.isDirectory()) {
+                error("FastQ directory for sample '${meta.id}' does not exist or is not a directory: ${fqDirPath}")
+            }
+
+            // Find fastq files inside the provided directory
+            def fastqFiles = fqDir.listFiles()?.findAll { f ->
+                def n = f.name.toLowerCase()
+                return n.endsWith('.fq') || n.endsWith('.fq.gz') || n.endsWith('.fastq') || n.endsWith('.fastq.gz')
+            }?.collect { it.path } ?: []
+            if (fastqFiles.size() == 0) {
+                error("No FastQ files found in directory for sample '${meta.id}': ${fqDirPath}")
+            }
+
+            // Infer endedness: if any file looks like R2 assume paired-end, otherwise single-end
+            def isPaired = fastqFiles.any { it =~ /(?i)(_R?2|_2)\\./ }
+            if (isPaired) {
+                meta = meta + [ single_end:false ]
+            } else {
+                meta = meta + [ single_end:true ]
+            }
+
+
+            // Return tuple: sample id, meta (for grouping/validation), list of fastq file paths and reference path
+            return [ meta.id, meta, libtype, fastqFiles, gePath, trPath ]
         }
         .groupTuple()
         .map { samplesheet ->
             validateInputSamplesheet(samplesheet)
-        }
-        .map {
-            meta, fastqs ->
-                return [ meta, fastqs.flatten() ]
         }
         .set { ch_samplesheet }
 
@@ -145,6 +197,7 @@ workflow PIPELINE_COMPLETION {
     }
 }
 
+
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     FUNCTIONS
@@ -161,7 +214,7 @@ def validateInputParameters() {
 // Validate channels from input samplesheet
 //
 def validateInputSamplesheet(input) {
-    def (metas, fastqs) = input[1..2]
+    def (metas, libtype, fastqs, grefs, trefs) = input[1..5]
 
     // Check that multiple runs of the same sample are of the same datatype i.e. single-end / paired-end
     def endedness_ok = metas.collect{ meta -> meta.single_end }.unique().size == 1
@@ -169,7 +222,15 @@ def validateInputSamplesheet(input) {
         error("Please check input samplesheet -> Multiple runs of a sample must be of the same datatype i.e. single-end or paired-end: ${metas[0].id}")
     }
 
-    return [ metas[0], fastqs ]
+    // Return meta map, library type (string) ,fastq directory path (string), and reference paths (string)
+        def meta = metas[0]
+        def lib_type= libtype[0]
+        // fastqs is a list of lists of fastqFiles from groupTuple; we want the original directory path
+        def fastqDirPath = fastqs.flatten()
+        def grefPath = grefs[0]
+        def trefPath = trefs[0]
+
+        return [ meta, lib_type, fastqDirPath, grefPath, trefPath ]
 }
 //
 // Get attribute from genome config file e.g. fasta
@@ -197,16 +258,17 @@ def genomeExistsError() {
     }
 }
 //
-// Generate methods description for MultiQC
+// Generate methods description for MD-ALL_pipeline
 //
 def toolCitationText() {
     // TODO nf-core: Optionally add in-text citation tools to this list.
     // Can use ternary operators to dynamically construct based conditions, e.g. params["run_xyz"] ? "Tool (Foo et al. 2023)" : "",
-    // Uncomment function in methodsDescriptionText to render in MultiQC report
+    // Uncomment function in methodsDescriptionText to render in MD-ALL_pipeline report
     def citation_text = [
             "Tools used in the workflow included:",
-            "FastQC (Andrews 2010),",
-            "MultiQC (Ewels et al. 2016)",
+            "Pychopper (Oxford Nanopore Technologies(c), Epi2me-labs),",
+            "Minimap2 (Li 2018)",
+            "FeatureCounts (Liao et al. 2014)",
             "."
         ].join(' ').trim()
 
@@ -216,10 +278,11 @@ def toolCitationText() {
 def toolBibliographyText() {
     // TODO nf-core: Optionally add bibliographic entries to this list.
     // Can use ternary operators to dynamically construct based conditions, e.g. params["run_xyz"] ? "<li>Author (2023) Pub name, Journal, DOI</li>" : "",
-    // Uncomment function in methodsDescriptionText to render in MultiQC report
+    // Uncomment function in methodsDescriptionText to render in MD-ALL_pipeline report
     def reference_text = [
-            "<li>Andrews S, (2010) FastQC, URL: https://www.bioinformatics.babraham.ac.uk/projects/fastqc/).</li>",
-            "<li>Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics , 32(19), 3047–3048. doi: /10.1093/bioinformatics/btw354</li>"
+            "<li>Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics, 34:3094-3100. doi:10.1093/bioinformatics/bty191 URL: https://github.com/lh3/minimap2).</li>",
+            "<li>Pychopper URL: https://nf-co.re/modules/pychopper/ </li>",
+            "<li>FeatureCounts URL: https://nf-co.re/modules/subread_featurecounts </li>"
         ].join(' ').trim()
 
     return reference_text
