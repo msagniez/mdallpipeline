@@ -4,5 +4,9 @@
 	branch = quarto
 [submodule "modules/local/minimap2"]
 	path = modules/local/minimap2
+	url = https://github.com/chusj-pigu/wf-modules.git
+	branch = minimap2
 [submodule "modules/local/samtools"]
 	path = modules/local/samtools
+	url = https://github.com/chusj-pigu/wf-modules.git
+	branch=samtools
