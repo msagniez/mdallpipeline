@@ -1,6 +1,7 @@
 process ARRANGE_COUNTS {
     tag "$meta.id"
     label 'process_low'
+    label 'process_low_cpu'
 
     input:
     tuple val(meta), path(count_table)
