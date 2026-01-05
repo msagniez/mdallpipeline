@@ -1,0 +1,15 @@
+{
+  "name": "nf-core-mdallpipeline",
+  "recommendations": [
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
+    "nf-core.nf-core-extensionpack"
+  ]
+  "runArgs": [
+    "--privileged"
+  ],
+  "containerEnv": {
+    "APPTAINER_CACHEDIR": "${containerWorkspaceFolder}/.apptainer/cache"
+  },
+  "postCreateCommand": "mkdir -p .apptainer/cache"
+}

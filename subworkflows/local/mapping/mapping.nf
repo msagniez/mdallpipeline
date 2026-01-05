@@ -1,6 +1,6 @@
 // Import modules
 include { CAT_FASTQ              } from '../../../modules/local/catfastq/main.nf'
-include { PYCHOPPER              } from '../../../modules/nf-core/pychopper/main.nf' addParams( options: [label: "process_medium_low_time"])     // orient and trim cDNA reads with pychopper
+include { PYCHOPPER              } from '../../../modules/local/pychopper/main.nf'        // orient and trim cDNA reads with pychopper
 include { MINIMAP2_ALIGN as MINIMAP2_ALIGN_CDNA  } from '../../../modules/local/minimap2/main.nf'         // minimap2 alignment for pychopped cDNA reads
 include { MINIMAP2_ALIGN as MINIMAP2_ALIGN_DRNA  } from '../../../modules/local/minimap2/main.nf'         // minimap2 alignment for dRNA reads
 include { SAMTOOLS_TOBAM         } from '../../../modules/local/samtools/main.nf'         // Convert SAM to BAM
