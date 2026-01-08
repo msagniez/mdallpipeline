@@ -30,7 +30,7 @@ include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_mdal
 //   This is an example of how to use getGenomeAttribute() to fetch parameters
 //   from igenomes.config using `--genome`
 params.fasta = getGenomeAttribute('fasta')
-
+params.reference_dir = './reference_data'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     NAMED WORKFLOWS FOR PIPELINE
@@ -50,8 +50,9 @@ workflow NFCORE_MDALLPIPELINE {
     //
     // WORKFLOW: Run pipeline
     //
+    ref_dir = file(params.reference_dir)
     MDALLPIPELINE (
-        samplesheet
+        samplesheet, ref_dir
     )
     emit:
     multiqc_report = MDALLPIPELINE.out.multiqc_report // channel: /path/to/multiqc_report.html

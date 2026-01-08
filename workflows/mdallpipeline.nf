@@ -20,6 +20,7 @@ workflow MDALLPIPELINE {
 
     take:
     ch_samplesheet // channel: samplesheet read in from --input
+    reference_dir
     main:
 
     ch_versions = Channel.empty()
@@ -43,7 +44,7 @@ workflow MDALLPIPELINE {
     tuple(meta, tref)
     }
     //run COUNTING
-    COUNTING( ch_bam, ch_ref )
+    COUNTING( ch_bam, ch_ref, reference_dir )
     
     //
     // Collate and save software versions
