@@ -13,21 +13,30 @@
                 "errorMessage": "Sample name must be provided and cannot contain spaces",
                 "meta": ["id"]
             },
-            "fastq_1": {
+            "lib_type": {
                 "type": "string",
-                "format": "file-path",
-                "exists": true,
-                "pattern": "^([\\S\\s]*\\/)?[^\\s\\/]+\\.f(ast)?q\\.gz$",
-                "errorMessage": "FastQ file for reads 1 must be provided, cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
+                "enum": ["cDNA", "dRNA"],
+                "errorMessage": "lib_type must be either 'cDNA' or 'dRNA'"
             },
-            "fastq_2": {
+            "fastq_path": {
+                "type": "string",
+                "format": "directory-path",
+                "exists": true,
+                "errorMessage": "Path to FastQ directory must be provided and must exist"
+            },
+            "genome_ref": {
                 "type": "string",
                 "format": "file-path",
                 "exists": true,
-                "pattern": "^([\\S\\s]*\\/)?[^\\s\\/]+\\.f(ast)?q\\.gz$",
-                "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
+                "errorMessage": "Path to reference file must be provided and must exist"
+            },
+            "transcriptome_ref": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "errorMessage": "Path to reference file must be provided and must exist"
             }
         },
-        "required": ["sample", "fastq_1"]
+        "required": ["sample", "lib_type","fastq_path","genome_ref","transcriptome_ref"]
     }
 }
