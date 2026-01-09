@@ -5,6 +5,7 @@
 */
 include { MAPPING                } from '../subworkflows/local/mapping/mapping.nf'
 include { COUNTING               } from '../subworkflows/local/counting/counting.nf'
+include { COUNTING_OARFISH       } from '../subworkflows/local/counting/counting_oarfish.nf'
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
@@ -34,7 +35,7 @@ workflow MDALLPIPELINE {
     //run MAPPING
     MAPPING ( ch_mapping )
 
-    // MODULE: Run COUNTING
+    // MODULE: Run COUNTING with FeatureCounts
     //prep channel
     ch_bam = MAPPING.out.bam.map { meta, bam, bai ->
     tuple(meta,bam)
@@ -42,8 +43,17 @@ workflow MDALLPIPELINE {
     ch_ref = ch_samplesheet.map { meta, libtype, fastqFiles, gref, tref -> 
     tuple(meta, tref)
     }
-    //run COUNTING
+    //run COUNTING with FeatureCounts
     COUNTING( ch_bam, ch_ref )
+
+    // MODULE: Run COUNTING_OARFISH with Oarfish
+    //prep channel
+    ch_fastq = MAPPING.out.pychopped_fastq
+    ch_ref = ch_samplesheet.map { meta, libtype, fastqFiles, gref, tref -> 
+    tuple(meta, tref)
+    }
+    //run COUNTING_OARFISH with Oarfish
+    COUNTING_OARFISH( ch_bam, ch_ref )
     
     //
     // Collate and save software versions

@@ -1,5 +1,5 @@
 // Import modules
-include { SUBREAD_FEATURECOUNTS              } from '../../../modules/nf-core/subread/featurecounts/main.nf'     // count reads from bams on transcriptomic ref
+include { SUBREAD_FEATURECOUNTS              } from '../../../modules/nf-core/subread/featurecounts/main.nf'     // count reads from bams on transcriptomic ref using featurecounts
 include { ARRANGE_COUNTS                     } from '../../../modules/local/arrangecounts/main.nf'               // arrange featucounts count table to keep only geneID and raw counts
 
 // Define the main workflow

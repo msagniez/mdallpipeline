@@ -75,6 +75,7 @@ workflow MAPPING {
 
     emit:
     bam      = SAMTOOLS_INDEX.out.bamfile_index       // Final sorted BAM with index
+    pychopped_fastq = PYCHOPPER.out.fastq             // fastq_pass from pychopper to run quantif on fastq
     versions = ch_versions                            // All tool versions
 
 }
