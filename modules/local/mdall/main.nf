@@ -201,7 +201,7 @@ process MDALL_COUNT_MATRIX {
     label 'process_low_memory'
     label 'process_low_medium_cpu'
     
-    module 'R/4.2.0:DESeq2/1.38.0:SummarizedExperiment/1.28.0'
+    //module 'R/4.2.0:DESeq2/1.38.0:SummarizedExperiment/1.28.0' //error command not found (module)
 
     input:
     tuple val(meta), path(count_matrix)

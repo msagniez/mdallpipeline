@@ -1,6 +1,6 @@
 process PYCHOPPER {
     tag "$meta.id"
-    label 'process_medium_low_time'
+    label 'process_medium_time'
     label 'process_high_cpu'
 
     conda "${moduleDir}/environment.yml"
